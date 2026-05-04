@@ -53,22 +53,32 @@ The certificates will remain and can be reused for future deployments.
 
 **Note:** If you have existing certificates from previous deployments, they will be automatically referenced by the data source.
 
-## Usage
+## Database
 
-1. Initialize Terraform:
-   ```bash
-   terraform init
-   ```
+The database VM runs TimescaleDB (PostgreSQL) in Docker with automated migrations:
 
-2. Plan the deployment:
-   ```bash
-   terraform plan
-   ```
+- **Database**: TimescaleDB for time-series data
+- **User**: `telemetry_user` with full access to `telemetry_db`
+- **Auto-migration**: Creates `telemetry` table on startup with proper indexes
+- **TimescaleDB**: Automatically converts the table to a hypertable for time-series optimization
 
-3. Apply the configuration:
-   ```bash
-   terraform apply
-   ```
+### Telemetry Table Schema
+
+```sql
+CREATE TABLE IF NOT EXISTS telemetry (
+    id SERIAL PRIMARY KEY,
+    device_id TEXT NOT NULL,
+    temperature DOUBLE PRECISION,
+    humidity DOUBLE PRECISION,
+    timestamp TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_telemetry_device_id ON telemetry(device_id);
+CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON telemetry(timestamp);
+
+-- Hypertable conversion (TimescaleDB)
+SELECT create_hypertable('telemetry', 'timestamp', if_not_exists => TRUE);
 
 ## Variables
 
