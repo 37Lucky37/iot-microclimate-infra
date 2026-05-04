@@ -1,38 +1,32 @@
-# App VM: Docker runs the same API image on port 8000.
-# HTTPS traffic for API is terminated at the external load balancer.
-
 locals {
-  api_database_url = "postgresql+asyncpg://${urlencode(var.db_user)}:${urlencode(var.db_password)}@${google_compute_instance.postgres_vm.network_interface[0].network_ip}:5432/${urlencode(var.db_name)}"
+  api_database_url = "postgresql+asyncpg://${urlencode(var.db_user)}:${urlencode(var.db_password)}@${var.db_private_ip}:5432/${urlencode(var.db_name)}"
 }
 
 resource "google_compute_instance" "api_vm" {
-  name         = "iot-api-vm"
-  machine_type = var.api_vm_machine_type
+  name         = var.vm_name
+  machine_type = var.machine_type
   zone         = var.zone
-  tags         = ["iot-api"]
-
-  depends_on = [google_compute_instance.postgres_vm]
+  tags         = var.tags
 
   allow_stopping_for_update = true
 
   boot_disk {
     initialize_params {
-      image = "debian-cloud/debian-12"
-      size  = 30
-      type  = "pd-standard"
+      image = var.disk_image
+      size  = var.disk_size
+      type  = var.disk_type
     }
   }
 
   network_interface {
-    network    = google_compute_network.vpc.id
-    subnetwork = google_compute_subnetwork.subnet.id
+    network    = var.vpc_id
+    subnetwork = var.subnet_id
 
     access_config {}
   }
 
-  # Needed to pull the API image from Artifact Registry (and to avoid "service account: false").
   service_account {
-    email  = data.google_compute_default_service_account.default.email
+    email  = var.service_account_email
     scopes = ["https://www.googleapis.com/auth/cloud-platform"]
   }
 
@@ -46,7 +40,6 @@ apt-get install -y docker.io curl gnupg ca-certificates
 systemctl enable docker
 systemctl start docker
 
-# Artifact Registry: VM service account pulls images (grant roles/artifactregistry.reader on the SA if needed).
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor --batch --yes -o /etc/apt/keyrings/cloud.google.gpg
 echo "deb [signed-by=/etc/apt/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" > /etc/apt/sources.list.d/google-cloud-sdk.list
@@ -72,17 +65,14 @@ EOT
 }
 
 resource "google_compute_firewall" "api_http" {
-  name    = "allow-api-http"
-  network = google_compute_network.vpc.name
+  name    = var.firewall_name
+  network = var.vpc_name
 
   allow {
     protocol = "tcp"
     ports    = ["8000"]
   }
 
-  source_ranges = [
-    "35.191.0.0/16",
-    "130.211.0.0/22",
-  ]
-  target_tags   = ["iot-api"]
+  source_ranges = var.source_ranges
+  target_tags   = var.tags
 }

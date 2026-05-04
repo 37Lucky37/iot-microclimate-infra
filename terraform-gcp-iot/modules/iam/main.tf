@@ -1,4 +1,3 @@
-# Default Compute Engine service account pulls images from Artifact Registry on the API VM.
 data "google_compute_default_service_account" "default" {
 }
 

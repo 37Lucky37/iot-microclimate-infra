@@ -9,40 +9,82 @@ terraform {
   }
 }
 
-resource "google_compute_router" "router" {
-  name    = "iot-router"
-  network = google_compute_network.vpc.id
-  region  = var.region
+module "iam" {
+  source = "./modules/iam"
 
-  bgp {
-    asn = 64514
-  }
+  project_id = var.project_id
 }
 
-resource "google_compute_router_nat" "nat" {
-  name                               = "iot-nat"
-  router                             = google_compute_router.router.name
-  region                             = var.region
+module "vpc" {
+  source = "./modules/vpc"
 
-  nat_ip_allocate_option             = "AUTO_ONLY"
-  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
-
-  log_config {
-    enable = true
-    filter = "ERRORS_ONLY"
-  }
+  region = var.region
 }
 
-resource "google_compute_firewall" "allow_ssh_iot" {
-  name    = "allow-ssh-iot"
-  network = google_compute_network.vpc.name
+module "database" {
+  source = "./modules/database"
 
-  depends_on = [google_compute_network.vpc]
+  machine_type = var.postgres_vm_machine_type
+  zone         = var.zone
+  vpc_id       = module.vpc.vpc_id
+  subnet_id    = module.vpc.subnet_id
+  vpc_name     = module.vpc.vpc_name
+  subnet_cidr  = module.vpc.subnet_cidr
+  db_user      = var.db_user
+  db_password  = var.db_password
+  db_name      = var.db_name
 
-  allow {
-    protocol = "tcp"
-    ports    = ["22"]
-  }
+  depends_on = [module.vpc]
+}
 
-  source_ranges = ["0.0.0.0/0"]
+module "api" {
+  source = "./modules/api"
+
+  machine_type             = var.api_vm_machine_type
+  zone                     = var.zone
+  vpc_id                   = module.vpc.vpc_id
+  subnet_id                = module.vpc.subnet_id
+  vpc_name                 = module.vpc.vpc_name
+  service_account_email    = module.iam.service_account_email
+  db_private_ip            = module.database.db_private_ip
+  db_user                  = var.db_user
+  db_password              = var.db_password
+  db_name                  = var.db_name
+  artifact_registry_region = var.artifact_registry_region
+  api_container_image      = var.api_container_image
+  iot_api_key              = var.iot_api_key
+  grafana_api_key          = var.grafana_api_key
+  run_db_init              = var.run_db_init
+
+  depends_on = [module.database]
+}
+
+module "grafana" {
+  source = "./modules/grafana"
+
+  machine_type          = var.grafana_vm_machine_type
+  zone                  = var.zone
+  vpc_id                = module.vpc.vpc_id
+  subnet_id             = module.vpc.subnet_id
+  vpc_name              = module.vpc.vpc_name
+  service_account_email = module.iam.service_account_email
+  db_private_ip         = module.database.db_private_ip
+  db_user               = var.db_user
+  db_password           = var.db_password
+  db_name               = var.db_name
+  grafana_admin_password = var.grafana_admin_password
+
+  depends_on = [module.database]
+}
+
+module "load_balancer" {
+  source = "./modules/load_balancer"
+
+  zone                = var.zone
+  api_vm_self_link    = module.api.api_vm_self_link
+  grafana_vm_self_link = module.grafana.grafana_vm_self_link
+  api_domain          = var.api_domain
+  grafana_domain      = var.grafana_domain
+
+  depends_on = [module.api, module.grafana]
 }

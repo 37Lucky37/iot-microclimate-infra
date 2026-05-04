@@ -1,8 +1,8 @@
 resource "google_compute_instance_group" "api" {
-  name = "iot-api-instance-group"
+  name = var.api_instance_group_name
   zone = var.zone
   instances = [
-    google_compute_instance.api_vm.self_link,
+    var.api_vm_self_link,
   ]
 
   named_port {
@@ -12,10 +12,10 @@ resource "google_compute_instance_group" "api" {
 }
 
 resource "google_compute_instance_group" "grafana" {
-  name = "iot-grafana-instance-group"
+  name = var.grafana_instance_group_name
   zone = var.zone
   instances = [
-    google_compute_instance.grafana_vm.self_link,
+    var.grafana_vm_self_link,
   ]
 
   named_port {
@@ -25,7 +25,7 @@ resource "google_compute_instance_group" "grafana" {
 }
 
 resource "google_compute_health_check" "api" {
-  name = "iot-api-health-check"
+  name = var.api_health_check_name
 
   http_health_check {
     port         = 8000
@@ -39,7 +39,7 @@ resource "google_compute_health_check" "api" {
 }
 
 resource "google_compute_health_check" "grafana" {
-  name = "iot-grafana-health-check"
+  name = var.grafana_health_check_name
 
   http_health_check {
     port         = 3000
@@ -53,7 +53,7 @@ resource "google_compute_health_check" "grafana" {
 }
 
 resource "google_compute_backend_service" "api" {
-  name                  = "iot-api-backend-service"
+  name                  = var.api_backend_service_name
   protocol              = "HTTP"
   port_name             = "http"
   timeout_sec           = 30
@@ -67,7 +67,7 @@ resource "google_compute_backend_service" "api" {
 }
 
 resource "google_compute_backend_service" "grafana" {
-  name                  = "iot-grafana-backend-service"
+  name                  = var.grafana_backend_service_name
   protocol              = "HTTP"
   port_name             = "grafana"
   timeout_sec           = 30
@@ -81,7 +81,7 @@ resource "google_compute_backend_service" "grafana" {
 }
 
 resource "google_compute_url_map" "lb" {
-  name = "iot-lb-url-map"
+  name = var.url_map_name
 
   default_service = google_compute_backend_service.api.self_link
 
@@ -106,41 +106,30 @@ resource "google_compute_url_map" "lb" {
   }
 }
 
-resource "google_compute_managed_ssl_certificate" "lb" {
-  name = "iot-lb-ssl-cert"
-
-  managed {
-    domains = [
-      var.api_domain,
-      var.grafana_domain,
-    ]
-  }
-
-  lifecycle {
-    prevent_destroy = true
-    create_before_destroy = true
-  }
+# Certificate is assumed to be created separately and is permanent
+data "google_compute_ssl_certificate" "lb" {
+  name = var.ssl_certificate_name
 }
 
 resource "google_compute_target_https_proxy" "lb" {
-  name            = "iot-https-proxy"
+  name            = var.https_proxy_name
   url_map         = google_compute_url_map.lb.self_link
-  ssl_certificates = [google_compute_managed_ssl_certificate.lb.self_link]
+  ssl_certificates = [data.google_compute_ssl_certificate.lb.self_link]
 }
 
 resource "google_compute_global_address" "lb" {
-  name = "iot-lb-ip"
+  name = var.global_address_name
 }
 
 resource "google_compute_global_forwarding_rule" "https" {
-  name       = "iot-https-forwarding-rule"
+  name       = var.https_forwarding_rule_name
   ip_address = google_compute_global_address.lb.address
   port_range = "443"
   target     = google_compute_target_https_proxy.lb.self_link
 }
 
 resource "google_compute_url_map" "http_redirect" {
-  name = "iot-http-redirect-map"
+  name = var.http_redirect_map_name
 
   default_url_redirect {
     https_redirect           = true
@@ -150,12 +139,12 @@ resource "google_compute_url_map" "http_redirect" {
 }
 
 resource "google_compute_target_http_proxy" "redirect" {
-  name    = "iot-http-redirect-proxy"
+  name    = var.http_redirect_proxy_name
   url_map = google_compute_url_map.http_redirect.self_link
 }
 
 resource "google_compute_global_forwarding_rule" "http" {
-  name       = "iot-http-forwarding-rule"
+  name       = var.http_forwarding_rule_name
   ip_address = google_compute_global_address.lb.address
   port_range = "80"
   target     = google_compute_target_http_proxy.redirect.self_link

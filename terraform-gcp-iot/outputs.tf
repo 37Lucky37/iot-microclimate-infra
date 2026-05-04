@@ -9,21 +9,21 @@ output "grafana_url" {
 }
 
 output "load_balancer_ip" {
-  value       = google_compute_global_address.lb.address
+  value       = module.load_balancer.load_balancer_ip
   description = "Public IP address assigned to the HTTPS load balancer."
 }
 
 output "db_private_ip" {
-  value       = google_compute_instance.postgres_vm.network_interface[0].network_ip
+  value       = module.database.db_private_ip
   description = "Private IP of the TimescaleDB VM (Postgres port 5432)."
 }
 
 output "api_vm_external_ip" {
-  value       = google_compute_instance.api_vm.network_interface[0].access_config[0].nat_ip
+  value       = module.api.api_vm_external_ip
   description = "Ephemeral public IP of the API VM."
 }
 
 output "grafana_vm_external_ip" {
-  value       = google_compute_instance.grafana_vm.network_interface[0].access_config[0].nat_ip
+  value       = module.grafana.grafana_vm_external_ip
   description = "Ephemeral public IP of the Grafana VM."
 }

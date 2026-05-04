@@ -1,23 +1,21 @@
 resource "google_compute_instance" "postgres_vm" {
-  name                      = "iot-postgres-vm"
-  machine_type              = var.postgres_vm_machine_type
+  name                      = var.vm_name
+  machine_type              = var.machine_type
   zone                      = var.zone
-  tags                      = ["iot-postgres"]
+  tags                      = var.tags
   allow_stopping_for_update = true
-
-  depends_on = [google_compute_router_nat.nat]
 
   boot_disk {
     initialize_params {
-      image = "debian-cloud/debian-12"
-      size  = 30
-      type  = "pd-standard"
+      image = var.disk_image
+      size  = var.disk_size
+      type  = var.disk_type
     }
   }
 
   network_interface {
-    network    = google_compute_network.vpc.id
-    subnetwork = google_compute_subnetwork.subnet.id
+    network    = var.vpc_id
+    subnetwork = var.subnet_id
   }
 
   metadata = {
@@ -48,17 +46,15 @@ EOT
   }
 }
 
-# API VM and other VMs in the subnet reach Postgres on the private IP (same model as docker-compose on one LAN).
 resource "google_compute_firewall" "postgres_ingress" {
-  name    = "allow-postgres-from-vpc-subnet"
-  network = google_compute_network.vpc.name
+  name    = var.firewall_name
+  network = var.vpc_name
 
   allow {
     protocol = "tcp"
     ports    = ["5432"]
   }
 
-  source_ranges = [google_compute_subnetwork.subnet.ip_cidr_range]
-  target_tags   = ["iot-postgres"]
+  source_ranges = [var.subnet_cidr]
+  target_tags   = var.tags
 }
-
