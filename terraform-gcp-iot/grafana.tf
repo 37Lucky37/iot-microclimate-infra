@@ -76,6 +76,9 @@ resource "google_compute_firewall" "grafana_http" {
     ports    = ["3000"]
   }
 
-  source_ranges = [var.grafana_http_ingress_cidr]
+  source_ranges = [
+    "35.191.0.0/16",
+    "130.211.0.0/22",
+  ]
   target_tags   = ["iot-grafana"]
 }

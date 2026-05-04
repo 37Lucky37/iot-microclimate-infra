@@ -1,11 +1,16 @@
 output "api_url" {
-  value       = "http://${google_compute_instance.api_vm.network_interface[0].access_config[0].nat_ip}:8000"
-  description = "Public HTTP URL for the API (ephemeral IP; use Cloud DNS / static IP for production)."
+  value       = "https://${var.api_domain}"
+  description = "Public HTTPS URL for the API load balancer."
 }
 
 output "grafana_url" {
-  value       = "http://${google_compute_instance.grafana_vm.network_interface[0].access_config[0].nat_ip}:3000"
-  description = "Public HTTP URL for Grafana."
+  value       = "https://${var.grafana_domain}"
+  description = "Public HTTPS URL for Grafana through the load balancer."
+}
+
+output "load_balancer_ip" {
+  value       = google_compute_global_address.lb.address
+  description = "Public IP address assigned to the HTTPS load balancer."
 }
 
 output "db_private_ip" {

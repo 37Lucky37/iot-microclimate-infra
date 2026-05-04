@@ -51,15 +51,14 @@ variable "artifact_registry_region" {
   default     = "europe-west2"
 }
 
-variable "enable_grafana_vm" {
-  description = "If true, start grafana/grafana:latest on the API VM (port 3000), like docker-compose."
-  type        = bool
-  default     = true
+variable "api_domain" {
+  description = "Public domain name for the API."
+  default     = "microclimate-kk.uk"
 }
 
-variable "api_http_ingress_cidr" {
-  description = "CIDR allowed to reach API (8000) and Grafana (3000) on the public IP. Narrow for production."
-  default     = "0.0.0.0/0"
+variable "grafana_domain" {
+  description = "Public domain name for Grafana."
+  default     = "metrics-kk.uk"
 }
 
 variable "grafana_vm_machine_type" {
@@ -70,9 +69,4 @@ variable "grafana_vm_machine_type" {
 variable "grafana_admin_password" {
   description = "Admin password for Grafana."
   default     = "admin123"
-}
-
-variable "grafana_http_ingress_cidr" {
-  description = "CIDR allowed to reach Grafana (3000) on the public IP. Narrow for production."
-  default     = "0.0.0.0/0"
 }

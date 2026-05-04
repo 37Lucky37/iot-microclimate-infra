@@ -1,4 +1,5 @@
-# App VM: Docker runs the same images/ports as local docker-compose (API :8000, optional Grafana :3000).
+# App VM: Docker runs the same API image on port 8000.
+# HTTPS traffic for API is terminated at the external load balancer.
 
 locals {
   api_database_url = "postgresql+asyncpg://${urlencode(var.db_user)}:${urlencode(var.db_password)}@${google_compute_instance.postgres_vm.network_interface[0].network_ip}:5432/${urlencode(var.db_name)}"
@@ -79,6 +80,9 @@ resource "google_compute_firewall" "api_http" {
     ports    = ["8000"]
   }
 
-  source_ranges = [var.api_http_ingress_cidr]
+  source_ranges = [
+    "35.191.0.0/16",
+    "130.211.0.0/22",
+  ]
   target_tags   = ["iot-api"]
 }
