@@ -31,7 +31,7 @@ resource "google_compute_instance" "grafana_vm" {
   }
 
   metadata = {
-    "startup-script" = replace(<<-EOT
+  "startup-script" = replace(<<-EOT
 #!/bin/bash
 set -euxo pipefail
 
@@ -40,9 +40,36 @@ apt-get install -y docker.io curl gnupg ca-certificates
 systemctl enable docker
 systemctl start docker
 
+# Grafana directories
 mkdir -p /opt/grafana-data
+mkdir -p /opt/grafana-provisioning/datasources
+
 chown -R 472:472 /opt/grafana-data
 chmod -R 775 /opt/grafana-data
+
+# PostgreSQL datasource provisioning
+cat > /opt/grafana-provisioning/datasources/postgres.yaml <<EOF
+apiVersion: 1
+
+datasources:
+  - name: PostgreSQL
+    type: postgres
+    access: proxy
+    url: ${var.db_private_ip}:5432
+    database: ${var.db_name}
+    user: ${var.db_user}
+
+    secureJsonData:
+      password: ${var.db_password}
+
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1500
+      timescaledb: true
+
+    isDefault: true
+    editable: true
+EOF
 
 docker rm -f iot_microclimate_grafana || true
 docker pull grafana/grafana:latest
@@ -52,12 +79,29 @@ docker run -d \
   --restart unless-stopped \
   -p 3000:3000 \
   -v /opt/grafana-data:/var/lib/grafana \
-  -e GF_DATABASE_URL='${local.grafana_database_url}' \
+  -v /opt/grafana-provisioning/datasources:/etc/grafana/provisioning/datasources \
   -e GF_SECURITY_ADMIN_PASSWORD='${var.grafana_admin_password}' \
+  -e GF_USERS_ALLOW_SIGN_UP=false \
+  \
+  -e GF_SMTP_ENABLED=true \
+  -e GF_SMTP_HOST='smtp.gmail.com:587' \
+  -e GF_SMTP_USER='${var.smtp_user}' \
+  -e GF_SMTP_PASSWORD='${var.smtp_password}' \
+  -e GF_SMTP_FROM_ADDRESS='${var.smtp_user}' \
+  -e GF_SMTP_FROM_NAME='IoT Microclimate Alerts' \
+  -e GF_SMTP_SKIP_VERIFY=true \
+  \
   grafana/grafana:latest
+
+echo "Waiting for Grafana..."
+sleep 15
+
+curl http://localhost:3000/api/health || true
+
+echo "Grafana setup completed!"
 EOT
-    , "\r", "")
-  }
+  , "\r", "")
+}
 }
 
 resource "google_compute_firewall" "grafana_http" {

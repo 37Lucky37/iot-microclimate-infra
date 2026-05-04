@@ -73,6 +73,8 @@ module "grafana" {
   db_password           = var.db_password
   db_name               = var.db_name
   grafana_admin_password = var.grafana_admin_password
+  smtp_user = var.smtp_user
+  smtp_password = var.smtp_password
 
   depends_on = [module.database]
 }

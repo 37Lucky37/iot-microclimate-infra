@@ -70,3 +70,14 @@ variable "grafana_admin_password" {
   description = "Admin password for Grafana."
   default     = "admin123"
 }
+
+variable "smtp_user" {
+  type = string
+  default     = "kostyakozyb@gmail.com"
+}
+
+variable "smtp_password" {
+  type      = string
+  sensitive = true
+  default     = "Password123456"
+}

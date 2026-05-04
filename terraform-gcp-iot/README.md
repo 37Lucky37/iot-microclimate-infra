@@ -17,11 +17,12 @@ The infrastructure consists of:
 The configuration is organized into modules:
 
 - `modules/vpc`: Networking components
-- `modules/database`: PostgreSQL VM
-- `modules/api`: API VM
-- `modules/grafana`: Grafana VM
+- `modules/database`: PostgreSQL VM with automated migrations
+- `modules/api`: API VM with Docker
+- `modules/grafana`: Grafana VM with PostgreSQL data source pre-configured
 - `modules/load_balancer`: Load balancer and SSL proxy
 - `modules/iam`: IAM roles and service accounts
+- `modules/grafana_alerts`: Grafana alert rules and notification configuration
 
 ## SSL Certificates
 
@@ -79,16 +80,97 @@ CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON telemetry(timestamp);
 
 -- Hypertable conversion (TimescaleDB)
 SELECT create_hypertable('telemetry', 'timestamp', if_not_exists => TRUE);
+```
 
-## Variables
+## Grafana
 
-See `variables.tf` for all configurable variables.
+Grafana is automatically configured on startup:
 
-## Outputs
+- **Access**: HTTPS at `https://metrics-kk.uk` (through load balancer)
+- **Default user**: `admin`
+- **Password**: Configured via `grafana_admin_password` variable
+- **Data Source**: PostgreSQL is pre-configured as default data source
+- **Database**: `telemetry_db` on `telemetry_user`
 
-- `api_url`: HTTPS URL for the API
-- `grafana_url`: HTTPS URL for Grafana
-- `load_balancer_ip`: Public IP of the load balancer
-- `db_private_ip`: Private IP of the database VM
-- `api_vm_external_ip`: Public IP of the API VM
-- `grafana_vm_external_ip`: Public IP of the Grafana VM
+The PostgreSQL connection is automatically provisioned in `/opt/grafana-provisioning/datasources/postgres.yaml`.
+
+### Access Grafana
+
+```bash
+# Get Grafana external IP
+terraform output grafana_vm_external_ip
+
+# Access at https://metrics-kk.uk (after DNS configuration)
+# Or via direct IP: https://<grafana_external_ip>:3000
+```
+
+## Monitoring and Alerts
+
+Grafana is configured with built-in alert rules that monitor your IoT telemetry data:
+
+### Alert Types
+
+1. **🌡️ High Temperature** (default: >35°C)
+   - Triggered when temperature exceeds threshold
+   - Alert sent to configured email
+
+2. **❄️ Low Temperature** (default: <5°C)
+   - Triggered when temperature falls below threshold
+   - Alert sent to configured email
+
+3. **💧 High Humidity** (default: >80%)
+   - Triggered when humidity exceeds threshold
+   - Alert sent to configured email
+
+4. **🏜️ Low Humidity** (default: <20%)
+   - Triggered when humidity falls below threshold
+   - Alert sent to configured email
+
+5. **📡 Device Disconnected** (default: 10 minutes offline)
+   - Triggered when no telemetry data is received
+   - Alert sent to configured email
+
+### Alert Configuration
+
+Configure alerts by setting these Terraform variables:
+
+```terraform
+alert_email             = "your-email@example.com"
+temperature_high        = 35.0
+temperature_low         = 5.0
+humidity_high           = 80.0
+humidity_low            = 20.0
+device_offline_duration = 10  # minutes
+```
+
+### Creating Alert Rules in Grafana
+
+After Grafana is deployed, you can create alert rules through the Grafana UI:
+
+1. Go to **Alerts** → **Alert rules** in Grafana
+2. Create new alert rules with conditions based on the `telemetry` table
+3. Configure notification channels pointing to your email
+4. Example query for high temperature alert:
+   ```sql
+   SELECT temperature FROM telemetry 
+   WHERE timestamp > now() - interval '5 minutes'
+   ORDER BY timestamp DESC LIMIT 1
+   ```
+
+### Data Ingestion
+
+IoT devices send telemetry data directly to PostgreSQL via API:
+
+```bash
+# Example: Send telemetry data via API
+curl -X POST https://api.microclimate-kk.uk/api/telemetry \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: supersecretawskey123" \
+  -d '{
+    "device_id": "device-01",
+    "temperature": 22.5,
+    "humidity": 65.0
+  }'
+```
+
+The data is automatically stored in the `telemetry` table and available for Grafana queries.
