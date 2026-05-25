@@ -53,9 +53,7 @@ module "api" {
   artifact_registry_region = var.artifact_registry_region
   api_container_image      = var.api_container_image
   iot_api_key              = var.iot_api_key
-  grafana_api_key          = var.grafana_api_key
   run_db_init              = var.run_db_init
-
   depends_on = [module.database]
 }
 

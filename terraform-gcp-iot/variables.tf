@@ -1,5 +1,5 @@
 variable "project_id" {
-  default = "project-b12048a7-83d0-420b-ac8"
+  default = "microclimate-project-497211"
 }
 
 variable "region" {
@@ -30,12 +30,8 @@ variable "iot_api_key" {
   default = "supersecretawskey123"
 }
 
-variable "grafana_api_key" {
-  default = "supersecretgrafanakey456"
-}
-
 variable "run_db_init" {
-  default = "false"
+  default = "true"
 }
 
 variable "api_vm_machine_type" {
@@ -43,7 +39,7 @@ variable "api_vm_machine_type" {
 }
 
 variable "api_container_image" {
-  default = "europe-west2-docker.pkg.dev/project-b12048a7-83d0-420b-ac8/iot-repo/iot-api:v1"
+  default = "europe-west2-docker.pkg.dev/microclimate-project-497211/iot-repo/iot-api:v1"
 }
 
 variable "artifact_registry_region" {
@@ -73,11 +69,9 @@ variable "grafana_admin_password" {
 
 variable "smtp_user" {
   type = string
-  default     = "kostyakozyb@gmail.com"
 }
 
 variable "smtp_password" {
   type      = string
   sensitive = true
-  default     = "Password123456"
 }

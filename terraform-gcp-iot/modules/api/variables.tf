@@ -107,12 +107,6 @@ variable "iot_api_key" {
   sensitive   = true
 }
 
-variable "grafana_api_key" {
-  description = "Grafana API key"
-  type        = string
-  sensitive   = true
-}
-
 variable "run_db_init" {
   description = "Run DB init flag"
   type        = string

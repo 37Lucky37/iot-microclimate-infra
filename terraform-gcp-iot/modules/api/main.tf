@@ -56,7 +56,6 @@ docker run -d \
   -p 8000:8000 \
   -e DATABASE_URL='${local.api_database_url}' \
   -e IOT_API_KEY='${var.iot_api_key}' \
-  -e GRAFANA_API_KEY='${var.grafana_api_key}' \
   -e RUN_DB_INIT='${var.run_db_init}' \
   ${var.api_container_image}
 EOT
