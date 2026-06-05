@@ -1,5 +1,5 @@
 variable "project_id" {
-  default = "microclimate-project-497211"
+  type = string
 }
 
 variable "region" {
@@ -15,19 +15,21 @@ variable "postgres_vm_machine_type" {
 }
 
 variable "db_user" {
-  default = "telemetry_user"
+  type = string
 }
 
 variable "db_password" {
-  default = "StrongPassword123!"
+  type      = string
+  sensitive = true
 }
 
 variable "db_name" {
-  default = "telemetry_db"
+  type = string
 }
 
 variable "iot_api_key" {
-  default = "supersecretawskey123"
+  type      = string
+  sensitive = true
 }
 
 variable "run_db_init" {
@@ -39,7 +41,7 @@ variable "api_vm_machine_type" {
 }
 
 variable "api_container_image" {
-  default = "europe-west2-docker.pkg.dev/microclimate-project-497211/iot-repo/iot-api:v1"
+  type = string
 }
 
 variable "artifact_registry_region" {
@@ -49,12 +51,12 @@ variable "artifact_registry_region" {
 
 variable "api_domain" {
   description = "Public domain name for the API."
-  default     = "microclimate-kk.uk"
+  type = string
 }
 
 variable "grafana_domain" {
   description = "Public domain name for Grafana."
-  default     = "metrics-kk.uk"
+  type = string
 }
 
 variable "grafana_vm_machine_type" {
@@ -64,7 +66,8 @@ variable "grafana_vm_machine_type" {
 
 variable "grafana_admin_password" {
   description = "Admin password for Grafana."
-  default     = "admin123"
+  type      = string
+  sensitive = true
 }
 
 variable "smtp_user" {
